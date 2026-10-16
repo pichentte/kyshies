@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>.</title>
+<style>
+  :root { --pink:#f4a6c6; --pink-soft:#c97a9f; --bg1:#1a1018; --bg2:#2b1826; --card:rgba(32,18,28,.55); }
+  * { box-sizing:border-box; }
+  html,body { margin:0; min-height:100%; }
+  body { background:linear-gradient(180deg,var(--bg2),var(--bg1)); color:var(--pink); font-family:Georgia,"Times New Roman",serif; line-height:1.8; }
+  canvas#rain { position:fixed; inset:0; width:100%; height:100%; z-index:0; pointer-events:none; }
+  main { position:relative; z-index:1; max-width:640px; margin:0 auto; padding:calc(40px + env(safe-area-inset-top,0px)) 18px calc(60px + env(safe-area-inset-bottom,0px)); }
+  h1 { font-weight:normal; font-size:3rem; text-align:center; margin:0 0 24px; line-height:1; }
+  .card { background:var(--card); border:1px solid rgba(244,166,198,.35); border-radius:10px; padding:24px 22px; backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
+  p { margin:0 0 16px; }
+  .sign { text-align:right; margin:24px 0 0; }
+</style>
+</head>
+<body>
+<canvas id="rain"></canvas>
+<main>
+  <h1>.</h1>
+  <div class="card">
+    <p>Kyshies,</p>
+    <p>Reposting those two videos was hurtful and disrespectful to you, and I am sorry. I do not find that word funny. I want nothing to do with it, now or ever, and that includes the day we have a child.</p>
+    <p>I do not see you that way. I do not see my sisters that way, and I do not see any woman that way. I do not take a side between genders. The reposts were never aimed at you.</p>
+    <p>I am sorry that you cried. I am sorry for all of this. Please do not take away our babies, our plushies. I want to be a good husband and a good dad to them, and to the children we have one day.</p>
+    <p>I still love you, and I mean that. I am not asking for an answer right now. I only want you to know this apology is sincere.</p>
+    <p class="sign">With love,<br>Poopirfan</p>
+  </div>
+</main>
+
+<script>
+const c = document.getElementById('rain'), ctx = c.getContext('2d');
+let W, H, dpr, streaks = [], drops = [];
+
+function resize(){
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  c.width = W*dpr; c.height = H*dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  const n = Math.round(W*H/9000);
+  streaks = Array.from({length:n}, () => newStreak(true));
+  drops = Array.from({length:Math.round(W*H/22000)}, () => newDrop());
+}
+function newStreak(init){
+  return { x:Math.random()*W, y:init?Math.random()*H:-30, l:10+Math.random()*18, v:9+Math.random()*9, a:.15+Math.random()*.25 };
+}
+function newDrop(){
+  return { x:Math.random()*W, y:Math.random()*H, r:2+Math.random()*4, v:0, wait:Math.random()*400, trail:[] };
+}
+
+function frame(){
+  ctx.clearRect(0,0,W,H);
+
+  // falling streaks
+  ctx.lineWidth = 1;
+  for (const s of streaks){
+    ctx.strokeStyle = 'rgba(244,166,198,'+s.a+')';
+    ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(s.x-2, s.y+s.l); ctx.stroke();
+    s.y += s.v; s.x -= .3;
+    if (s.y > H){
+      // splash drop on the glass
+      if (Math.random() < .35 && drops.length < 140){
+        const d = newDrop(); d.x = s.x; d.y = H*(.2+Math.random()*.8); d.r = 1.5+Math.random()*2.5; drops.push(d);
+      }
+      Object.assign(s, newStreak(false));
+    }
+  }
+
+  // glass drops with reflections, sliding occasionally
+  for (let i = drops.length-1; i >= 0; i--){
+    const d = drops[i];
+    d.wait--;
+    if (d.wait < 0 && d.r > 3){ d.v = Math.min(d.v+.05, 2.2); }
+    if (d.v > 0){
+      d.trail.push({x:d.x,y:d.y});
+      if (d.trail.length > 18) d.trail.shift();
+      d.y += d.v; d.x += (Math.random()-.5)*.3;
+      if (Math.random() < .03) d.v = 0, d.wait = 100+Math.random()*300;
+    }
+    // trail
+    if (d.trail.length){
+      ctx.strokeStyle = 'rgba(244,166,198,.10)'; ctx.lineWidth = d.r*.6;
+      ctx.beginPath(); ctx.moveTo(d.trail[0].x, d.trail[0].y);
+      for (const p of d.trail) ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+    }
+    // drop body
+    const g = ctx.createRadialGradient(d.x-d.r*.3, d.y-d.r*.3, d.r*.1, d.x, d.y, d.r);
+    g.addColorStop(0,'rgba(255,230,242,.55)');
+    g.addColorStop(.6,'rgba(244,166,198,.14)');
+    g.addColorStop(1,'rgba(244,166,198,.04)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,220,238,.25)'; ctx.lineWidth = .6; ctx.stroke();
+    // highlight (reflection)
+    ctx.fillStyle = 'rgba(255,255,255,.55)';
+    ctx.beginPath(); ctx.arc(d.x-d.r*.35, d.y-d.r*.35, d.r*.22, 0, Math.PI*2); ctx.fill();
+
+    if (d.y > H+20){ drops.splice(i,1); drops.push(newDrop()); }
+  }
+  requestAnimationFrame(frame);
+}
+window.addEventListener('resize', resize);
+resize(); frame();
+</script>
+</body>
+</html>
